@@ -1,0 +1,81 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(sf)
+library(irtoys)
+library(scales)
+library(USAboundaries)
+library(politicaldata)
+```
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+map_states <- us_boundaries("1999-07-04")
+map_counties <- us_boundaries(as.Date("1999-07-04"), type = "county")
+new_england <- c("Massachusetts", "Vermont", "New Hampshire", "Connecticut",
+                   "Rhode Island", "Maine", "New York", "New Jersey", "Pennsylvania")
+midwest = c("Ohio", "Indiana", "Illinois", "Wisconsin", "Minnesota", "North Dakota",
+            "South Dakota", "Iowa", "Missouri", "Kansas", "West Virginia", "Nebraska",
+            "Kentucky", "Michigan")
+map_ne <- us_boundaries("1943-02-12", states = midwest)
+map_congressional <- us_boundaries(type = "congressional",
+                                     states = new_england)
+#plot(st_geometry(map_states))
+#plot(st_geometry(map_counties))
+#plot(st_geometry(map_ne))
+#plot(st_geometry(map_congressional))
+
+cd_ne <- USAboundaries::us_congressional(resolution = "high", states = midwest)
+
+ggplot(cd_ne) + geom_sf(aes(fill = aland)) +
+  scale_fill_gradientn(colors = rev(heat.colors(15)))
+```
+
+```{r}
+map.districts <- function(map.regions) {
+  return(map.regions[,c("state_abbr", "cd115fp")])
+}
+
+single.district.states <- function() {
+  bds <- USAboundaries::us_congressional(resolution = "high")
+  result <- bds %>% count(state_abbr)
+  return(result[result$n == 1,1]$state_abbr)
+}
+
+presidential.results <- function(year, districts) {
+  pres <- pres_results_by_cd
+  pres$cd115fp <- sprintf("%02d", pres$district)
+  pres[pres$state_abb %in% single.district.states(), "cd115fp"] = "00"
+  pres$state_abbr <- pres$state_abb
+  newdf <- left_join(districts, pres)
+  return(newdf)
+}
+
+
+new_cd_ne <- presidential.results(2016, map.districts(cd_ne))
+new_cd_ne$diff = new_cd_ne$dem - new_cd_ne$rep
+
+
+p <- ggplot(new_cd_ne, aes(fill = diff)) + 
+  geom_sf(color = "grey74") +
+  scale_fill_gradient2(low = "red3", mid="white", high = "dodgerblue2") +
+  theme(legend.title=element_blank()) +
+  ggtitle( "2016 presidential election by congressional district",
+           "Difference in vote percentage")
+
+
+png(filename="2016.midwest.png", width=2000, height=2000)
+print(p)
+dev.off()
+
+
+```
+
