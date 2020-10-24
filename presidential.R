@@ -4,11 +4,6 @@
 # Take year and optional state and produce presidential election results. 
 
 library(tidyverse)
-library(ggplot2)
-library(sf)
-library(irtoys)
-library(scales)
-library(USAboundaries)
 library(politicaldata)
 library(optparse)
 
@@ -23,12 +18,13 @@ if (! (year %in% unique(pres_results_by_cd$year))) {
 }
 if (length(args) == 2) {
   state = args[2]
-  filename = paste(state, year, "csv", sep=".")
+  filename = paste(year, state, "presidential", "csv", sep=".")
+  # Check the state argument.
+  if (! state %in% unique(pres_results_by_cd$state_abb)) {
+    stop("State provided is not in the list of states.")
+  }
 } else {
-  filename = paste("all", year, "csv", sep=".")
-}
-if (! state %in% unique(pres_results_by_cd$state_abb)) {
-  stop("State provided is not in the list of states.")
+  filename = paste(year, "all", "presidential", "csv", sep=".")
 }
 
 if (length(args) != 2) {
