@@ -36,6 +36,8 @@ if (length(args) != 2) {
                         c("state_abb", "district", "total_votes", "dem", 
                           "other", "rep")]
 }
+data$district = as.numeric(str_extract(data$district, "\\d+"))
+data$district[is.na(data$district)] = 0
 print(paste("Writing filename: ", filename))
 write_csv(data, filename)
 
