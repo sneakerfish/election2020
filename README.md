@@ -9,6 +9,12 @@ districts are coded in a text field which is column 1.  It is best
 if you get a developer ID and add it to the end of the string in this
 file on your copy but it is not necessary to get this data.
 
+You can find out more here: [How to download all congressional districts from
+the census API](https://www2.census.gov/data/api-documentation/how-to-download-all-congressional-districts-from-the-census-api.pdf?)
+
+`join.py` An example of how to create a standard format of congressional
+district names that can be used by the Pandas `join` function.
+
 `house.R` Extract house results from R data set by congressional
 district for any year and state.  If you have the `politicaldata` and
 `tidyverse` and `optparse` libraries, this file will allow
