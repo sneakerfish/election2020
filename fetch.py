@@ -5,7 +5,7 @@ import re
 import requests
 
 
-data_dir = "data/"
+data_dir = "data"
 
 census_url = "https://api.census.gov/data/2019/acs/acs1/profile?get=NAME,group(DP02)&for=congressional%20district:*"
 census_urlA = "https://api.census.gov/data/"
