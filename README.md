@@ -27,3 +27,9 @@ example above.
 
 `congressionalmap.Rmd` R notebook to look at maps on the congressional
 district level.
+
+Maps are available by individual or groups of states
+
+![2016 Presidential Race](https://github.com/sneakerfish/election2020/blob/master/2016.presidential.png?raw=true)
+
+![2018 House Race](https://github.com/sneakerfish/election2020/blob/master/2016.house.png?raw=true)
