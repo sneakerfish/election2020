@@ -235,12 +235,111 @@ def normalize_census_district(name):
 
 # create datasets
 # per district
-#parse_census_years = [2012,2014,2016,2018,2019]
+parse_census_years = [2012,2014,2016,2018,2019]
 
-parse_census_years = [2018, 2019]
-###@@TODO the below are for 2019, they have diff ids in other years like 2016
+# the fields below are from these labels - for easier searching
+# CITIZEN, VOTING AGE POPULATION  or  SEX AND AGE + U.S. CITIZENSHIP STATUS
+# RACE
+# EDUCATIONAL ATTAINMENT
+census_fields_by_year = {
+    # https://api.census.gov/data/2019/acs/acs1/profile/variables.html
+    '2019': {'DP05_0087E': 'voteage_pop',
+             'DP05_0088E': 'voteage_m',
+             'DP05_0089E': 'voteage_f',
+             'DP05_0033E': 'race_pop',
+             'DP05_0037E': 'race_white',
+             'DP05_0065E': 'race_black',
+             'DP05_0067E': 'race_asian',
+             'DP05_0071E': 'race_hisp',
+             'DP02_0059E': 'ed_pop',
+             'DP02_0060E': 'ed_prehs',
+             'DP02_0061E': 'ed_nohs',
+             'DP02_0062E': 'ed_hs',
+             'DP02_0067E': 'ed_hsplus',
+             'DP02_0068E': 'ed_baplus',
+             'DP02_0066E': 'ed_grad',
+    },
+    # https://api.census.gov/data/2018/acs/acs1/profile/variables.html
+    '2018': {'DP05_0087E': 'voteage_pop',
+             'DP05_0088E': 'voteage_m',
+             'DP05_0089E': 'voteage_f',
+             'DP05_0033E': 'race_pop',
+             'DP05_0037E': 'race_white',
+             'DP05_0065E': 'race_black',
+             'DP05_0067E': 'race_asian',
+             'DP05_0071E': 'race_hisp',
+             'DP02_0058E': 'ed_pop',
+             'DP02_0059E': 'ed_prehs',
+             'DP02_0060E': 'ed_nohs',
+             'DP02_0061E': 'ed_hs',
+             'DP02_0066E': 'ed_hsplus',
+             'DP02_0067E': 'ed_baplus',
+             'DP02_0065E': 'ed_grad',
+    },
+    # https://api.census.gov/data/2016/acs/acs1/profile/variables.html
+    '2016': {'DP05_0082E': 'voteage_pop',
+             'DP05_0083E': 'voteage_m',
+             'DP05_0084E': 'voteage_f',
+             'DP05_0028E': 'race_pop',
+             'DP05_0032E': 'race_white',
+             'DP05_0060E': 'race_black',
+             'DP05_0062E': 'race_asian',
+             'DP05_0066E': 'race_hisp',
+             'DP02_0058E': 'ed_pop',
+             'DP02_0059E': 'ed_prehs',
+             'DP02_0060E': 'ed_nohs',
+             'DP02_0061E': 'ed_hs',
+             'DP02_0066E': 'ed_hsplus',
+             'DP02_0067E': 'ed_baplus',
+             'DP02_0065E': 'ed_grad',
+    },
+    # https://api.census.gov/data/2014/acs/acs1/profile/variables.html
+    '2014': {#'DP05_0082E': 'voteage_pop',
+             #'DP05_0083E': 'voteage_m',
+             #'DP05_0084E': 'voteage_f',
+             'DP05_0001E': 'allage_pop',
+             'DP05_0002E': 'allage_m',
+             'DP05_0003E': 'allage_f',
+             'DP05_0018E': 'allage_18plus',
+             'DP02_0095PE': 'allage_citzenpct',
+             'DP05_0028E': 'race_pop',
+             'DP05_0032E': 'race_white',
+             'DP05_0060E': 'race_black',
+             'DP05_0062E': 'race_asian',
+             'DP05_0066E': 'race_hisp',
+             'DP02_0058E': 'ed_pop',
+             'DP02_0059E': 'ed_prehs',
+             'DP02_0060E': 'ed_nohs',
+             'DP02_0061E': 'ed_hs',
+             'DP02_0066E': 'ed_hsplus',
+             'DP02_0067E': 'ed_baplus',
+             'DP02_0065E': 'ed_grad',
+    },
+    # https://api.census.gov/data/2012/acs/acs1/profile/variables.html
+    '2012': {#'DP05_0082E': 'voteage_pop',
+             #'DP05_0083E': 'voteage_m',
+             #'DP05_0084E': 'voteage_f',
+             'DP05_0001E': 'allage_pop',
+             'DP05_0002E': 'allage_m',
+             'DP05_0003E': 'allage_f',
+             'DP05_0018E': 'allage_18plus',
+             'DP02_0095PE': 'allage_citzenpct',
+             'DP05_0028E': 'race_pop',
+             'DP05_0032E': 'race_white',
+             'DP05_0060E': 'race_black',
+             'DP05_0062E': 'race_asian',
+             'DP05_0066E': 'race_hisp',
+             'DP02_0058E': 'ed_pop',
+             'DP02_0059E': 'ed_prehs',
+             'DP02_0060E': 'ed_nohs',
+             'DP02_0061E': 'ed_hs',
+             'DP02_0066E': 'ed_hsplus',
+             'DP02_0067E': 'ed_baplus',
+             'DP02_0065E': 'ed_grad',
+    },
+}
 
-census_fields = {'DP05_0087E': 'voteage_pop',
+old_census_fields = {'DP05_0087E': 'voteage_pop',
                  'DP05_0088E': 'voteage_m',
                  'DP05_0089E': 'voteage_f',
                  'DP05_0033E': 'race_pop',
@@ -258,6 +357,7 @@ census_groups = {'DP05', 'DP02'} # any group mentioned above
 
 for year in parse_census_years:
     result = {}
+    census_fields = census_fields_by_year[str(year)]
     for group in census_groups:
         fname = f"{data_dir}/{census_fileA}{year}{group}{census_fileB}"
         field_map = {}
@@ -301,9 +401,7 @@ for year in parse_census_years:
 
 
 # now for a single record with everything
-demo_groups = ['Vote by Gender', 'Vote by Race', 'Vote by Education']
-
-cong_years = [2018]
+cong_years = [2012, 2014, 2016, 2018]
 for year in cong_years:
     # get census from parsed_census-by-congress_2018.csv
     # get voting results from 1976-2018-house2.csv
@@ -348,14 +446,25 @@ for year in cong_years:
     demoh = []
     demod = {}
     democols = ['Gender,Male','Gender,Female',
-                'Race,White','Race,Black','Race,Latino'
-                'Race,Asian','Race,Non-white',
+                'Race,White','Race,Black','Race,Latino',
+                'Race,Asian','Race,Other',
                 'Education,HS or less',
-                "Education,Bachelor's degree",
-                'Education,Advanced degree']
+                "Education,College Graduate",
+                'Education,Postgraduate']
+    democolsrepl = {
+        "Men" : "Male",
+        "Women" : "Female",
+        "African-American" : "Black",
+        "Other race" : "Other",
+        "Bachelor's degree" : "College Graduate",
+        "Advanced degree" : "Postgraduate",
+    }
     with open(f"{data_dir}/exitpollsparsed_{year}h.csv", 'r') as csvfile:
         csvreader = csv.reader(csvfile)
         for row in csvreader:
+            # data cleanup
+            row[0] = row[0].replace('Vote by ', '')
+            if row[1] in democolsrepl: row[1] = democolsrepl[row[1]]
             k = f"{row[0]},{row[1]}"
             #print("KEY is =%s=" % k)
             if k in democols:
@@ -376,7 +485,8 @@ for year in cong_years:
                 row.extend(votingd[d][3:6])
             else:
                 row.extend([0,0,0])
-                print("NO voting results for %s %s" % (year,d))
+                if d != "DC-1" and d != "PR-1":
+                    print("NO voting results for %s %s" % (year,d))
             row.extend(censusd[d][3:])
             for c in democols:
                 k = c.replace(",", "_")
