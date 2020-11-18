@@ -1,0 +1,111 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(sf)
+library(irtoys)
+library(scales)
+library(USAboundaries)
+library(politicaldata)
+```
+
+
+```{r}
+## Return mappings for a list of states (note: provide a list of state names)
+state.mappings <- function(states.list) {
+    return(USAboundaries::us_congressional(resolution = "high", states = states.list))
+}
+
+## Extract just the state code and congressional district (115th congress)
+## and leave the rest of the geometry.
+map.districts <- function(map.regions) {
+  return(map.regions[,c("state_abbr", "cd115fp")])
+}
+
+single.district.states <- function() {
+  bds <- USAboundaries::us_congressional(resolution = "high")
+  result <- bds %>% count(state_abbr)
+  return(result[result$n == 1,1]$state_abbr)
+}
+
+## Parameters:
+##   df: A data frame that has the following columns:
+##     state_abbr - two character state code
+##     district - numeric district code.  value doesn't matter for
+##       single-district states
+##     data_col   - Any data column that you want to map.
+##   states:
+##     A list of state full names.  These will be the states in your
+##      map.  Your data can have all states, but only the states in
+##      the lists will be in the map.
+##
+## Return value is a set of polygons that can be mapped with the
+#  data column you provided.
+join.congressional.data <- function(df, states) {
+    if (length(intersect(colnames(df),  c("state_abbr", "district", "data_col")))!=3) {
+        return(NA)
+    }
+    map.data <- USAboundaries::us_congressional(resolution = "high", states =states)
+    df$cd115fp <- sprintf("%02d", df$district)
+    df[df$state_abbr %in% single.district.states(), "cd115fp"] = "00"
+    newdf <- left_join(map.data, df)
+    return(newdf)
+}
+```
+
+
+```{r}
+new_england <- c("Massachusetts", "Vermont", "New Hampshire", "Connecticut",
+                   "Rhode Island", "Maine", "New York", "New Jersey", "Pennsylvania")
+midwest = c("Ohio", "Indiana", "Illinois", "Wisconsin", "Minnesota", "North Dakota",
+            "South Dakota", "Iowa", "Missouri", "Kansas", "West Virginia", "Nebraska",
+            "Kentucky", "Michigan")
+
+# Presidential election 2016, vote difference
+pres.2016 <- pres_results_by_cd[pres_results_by_cd$year==2016,]
+pres.2016$diff <- pres.2016$dem - pres.2016$rep
+
+pres.2016 <- pres.2016[,c("state_abb", "district", "diff")]
+colnames(pres.2016) = c("state_abbr", "district", "data_col")
+
+joined.2016 <- join.congressional.data(pres.2016, new_england)
+
+p <- ggplot(joined.2016, aes(fill = data_col)) + 
+  geom_sf(color = "grey74") +
+  scale_fill_gradient2(low = "red3", mid="white", high = "dodgerblue2") +
+  theme(legend.title=element_blank()) +
+  ggtitle( "2016 presidential election by congressional district",
+           "Difference in vote percentage")
+print(p)
+```
+
+```{r}
+# Congressional election 2018, vote difference
+house.2018 <- house_results[house_results$year==2018,]
+house.2018[is.na(house.2018)] <- 0
+house.2018$diff <- house.2018$dem - house.2018$rep
+
+house.2018 <- house.2018[,c("state_abb", "district", "diff")]
+colnames(house.2018) = c("state_abbr", "district", "data_col")
+house.2018$district = ifelse(substr(house.2018$district,4,6) == "AL", 1, 
+                             as.integer(substr(house.2018$district,4,6)))
+
+joined.2018 <- join.congressional.data(house.2018, new_england)
+
+p <- ggplot(joined.2018, aes(fill = data_col)) + 
+  geom_sf(color = "grey74") +
+  scale_fill_gradient2(low = "red3", mid="white", high = "dodgerblue2") +
+  theme(legend.title=element_blank()) +
+  ggtitle( "2018 house election",
+           "Difference in vote percentage")
+print(p)
+```
+
