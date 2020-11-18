@@ -109,3 +109,22 @@ p <- ggplot(joined.2018, aes(fill = data_col)) +
 print(p)
 ```
 
+
+
+```{r}
+f <- read_csv("data/fin2018h.csv")
+f$whitepct <- f$race_white / f$race_pop
+f$state_abbr <- f$state
+f$data_col <- f$whitepct
+
+joined.f <- join.congressional.data(f, new_england)
+p <- ggplot(joined.2018, aes(fill = data_col)) + 
+  geom_sf(color = "grey74") +
+  scale_fill_gradient(low ="red", na.value="grey74", high = "white") +
+  theme(legend.title=element_blank()) +
+  ggtitle( "2018 census data",
+           "Percentage white")
+print(p)
+
+
+```
