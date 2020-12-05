@@ -84,7 +84,9 @@ p <- ggplot(joined.2016, aes(fill = data_col)) +
   theme(legend.title=element_blank()) +
   ggtitle( "2016 presidential election by congressional district",
            "Difference in vote percentage")
+png(filename="2016.presidential.png", width=600, height=600)
 print(p)
+dev.off()
 ```
 
 ```{r}
@@ -106,7 +108,9 @@ p <- ggplot(joined.2018, aes(fill = data_col)) +
   theme(legend.title=element_blank()) +
   ggtitle( "2018 house election",
            "Difference in vote percentage")
+png(filename="2018.house.png", width=600, height=600)
 print(p)
+dev.off()
 ```
 
 
@@ -124,7 +128,7 @@ p <- ggplot(joined.2018, aes(fill = data_col)) +
   theme(legend.title=element_blank()) +
   ggtitle( "2018 census data",
            "Percentage white")
+png(filename="2018.census.whitepct.png", width=600, height=600)
 print(p)
-
-
+dev.off()
 ```
