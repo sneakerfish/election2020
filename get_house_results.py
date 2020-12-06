@@ -61,20 +61,20 @@ def states():
     }
 
 def parse_district_name(district_name):
-    # Return state-code and number (or 0 for At-Large)
+    # Return state-code and number (or 1 for At-Large)
     m = re.match("(.*)'s? At-large district", district_name)
     state, district = None, None
     if m:
         state = states()[m.group(1)]
-        district = 0
+        district = 1
     else:
-        m = re.match("(.*)'s (\d+)(\w+) district", district_name)
+        m = re.match("(.*)'s? (\d+)(\w+) district", district_name)
         if m:
             state = states()[m.group(1)]
             district = m.group(2)
     return state, district
 
-def house_one_state(state_name, csv_writer):
+def house_one_state(state_name, csvwriter):
     url = "https://www.politico.com/2020-election/results/{}/house/".format(state_name)
     page = requests.get(url)
     soup = BeautifulSoup(page.content, 'html.parser')
@@ -84,9 +84,13 @@ def house_one_state(state_name, csv_writer):
         district = table.find(class_="heading").text
         rows = table.find_all("tr")
 
-        # The first row is a header
+        # The first row is a header, or it is missing.
         vals = {}
-        for j in range(1, len(rows)):
+        if len(rows) == 1:
+            row_range = [0]
+        else:
+            row_range = list(range(1,len(rows)))
+        for j in row_range:
             cols = rows[j].find_all("td")
             # There are always two columns, candidate name/party and percent raw votes
             lname = cols[0].find(class_="candidate-short-name").text
@@ -116,5 +120,7 @@ if __name__ == "__main__":
         for state in states().keys():
             time.sleep(0.5)
             print("State: {}".format(state))
+            if state == "District of Columbia":
+                state = "Washington DC"
             state_url = state.lower().replace(" ", "-")
             house_one_state(state_url, csvwriter)
