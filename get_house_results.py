@@ -85,11 +85,12 @@ def house_one_state(state_name, csvwriter):
         rows = table.find_all("tr")
 
         # The first row is a header, or it is missing.
-        vals = {}
         if len(rows) == 1:
             row_range = [0]
         else:
             row_range = list(range(1,len(rows)))
+
+        vals = {}
         for j in row_range:
             cols = rows[j].find_all("td")
             # There are always two columns, candidate name/party and percent raw votes
@@ -104,7 +105,7 @@ def house_one_state(state_name, csvwriter):
                 vals["{}:num".format(party)] = int(num.replace(",", ""))
                 vals["{}:pct".format(party)] = float(pct.replace("%", ""))
         state, distno = parse_district_name(district)
-        csvwriter.writerow([district, state, distno,
+        csvwriter.writerow([district, "{}-{:02d}".format(state, int(distno)),
                             vals.setdefault("dem:candidate", ""),
                             vals.setdefault("gop:candidate", ""),
                             vals.setdefault("dem:num", 0),
@@ -117,6 +118,8 @@ if __name__ == "__main__":
     fname = "2020-house.csv"
     with open(fname, 'w') as csvfile:
         csvwriter = csv.writer(csvfile)
+        csvwriter.writerow(["district-name", "district", "dem-candidate", "gop-candidate",
+                            "dem-num", "gop-num", "dem-pct", "gop-pct"])
         for state in states().keys():
             time.sleep(0.5)
             print("State: {}".format(state))
