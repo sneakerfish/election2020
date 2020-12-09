@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 # house.R
-# 
-# Take year and optional state and produce presidential election results. 
+#
+# Take year and optional state and produce presidential election results.
 
 library(tidyverse)
 library(politicaldata)
@@ -30,22 +30,20 @@ if (length(args) == 2) {
     stop("State provided is not in the list of states.")
   }
 } else {
-  filename = paste(year, "all", "house", sep=".")
+  filename = paste(year, "all", "house", "csv", sep=".")
 }
 
 if (length(args) != 2) {
   data <- house_results[house_results$year == year,
-                        c("state_abb", "district", "total_votes", "dem", 
+                        c("state_abb", "district", "total_votes", "dem",
                           "other", "rep")]
 } else {
-  data <- house_results[house_results$year == year & 
+  data <- house_results[house_results$year == year &
                           house_results$state_abb == state,
-                        c("state_abb", "district", "total_votes", "dem", 
+                        c("state_abb", "district", "total_votes", "dem",
                           "other", "rep")]
 }
 data$district = as.numeric(str_extract(data$district, "\\d+"))
 data$district[is.na(data$district)] = 0
 print(paste("Writing filename: ", paste(data_dir, filename, sep="/")))
 write_csv(data, paste(data_dir, filename, sep="/"))
-
-
