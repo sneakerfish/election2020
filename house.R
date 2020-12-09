@@ -7,14 +7,21 @@ library(tidyverse)
 library(politicaldata)
 library(optparse)
 
-args = commandArgs(trailingOnly=TRUE)
+data_dir = "data"
+if (! dir.exists(data_dir)) {
+  stop(paste("The data directory doesn't exist: ", data_dir))
+}
+
+args <- commandArgs(trailingOnly=TRUE)
 # test if there is at least one argument: if not, return an error
 if (length(args)==0) {
   stop("At least one argument must be supplied (year).", call.=FALSE)
 }
 year <- args[1]
 if (! (year %in% unique(house_results$year))) {
-  stop("Year provided is not a house election year.")
+  years = paste(unique(house_results$year), collapse=", ")
+  stop(paste("Year provided is not a house election year.",
+             years))
 }
 if (length(args) == 2) {
   state = args[2]
@@ -38,7 +45,7 @@ if (length(args) != 2) {
 }
 data$district = as.numeric(str_extract(data$district, "\\d+"))
 data$district[is.na(data$district)] = 0
-print(paste("Writing filename: ", filename))
-write_csv(data, filename)
+print(paste("Writing filename: ", paste(data_dir, filename, sep="/")))
+write_csv(data, paste(data_dir, filename, sep="/"))
 
 

@@ -7,6 +7,11 @@ library(tidyverse)
 library(politicaldata)
 library(optparse)
 
+data_dir = "data"
+if (! dir.exists(data_dir)) {
+  stop(paste("The data directory doesn't exist: ", data_dir))
+}
+
 args = commandArgs(trailingOnly=TRUE)
                                         # test if there is at least one argument: if not, return an error
 if (length(args)==0) {
@@ -16,7 +21,9 @@ if (length(args)==0) {
 
 year <- args[1]
 if (! (year %in% unique(pres_results_by_cd$year))) {
-    stop("Year provided is not a presidential election year.")
+      years = paste(unique(pres_results_by_cd$year), collapse=", ")
+  stop(paste("Year provided is not a presidential election year.",
+             years))
 }
 
 if (length(args) == 2) {
@@ -36,5 +43,5 @@ if (length(args) == 2) {
                                  "other", "rep")]
 }
 
-print(paste("Writing filename: ", filename))
-write_csv(data, filename)
+print(paste("Writing filename: ", paste(data_dir, filename, sep="/")))
+write_csv(data, paste(data_dir, filename, sep="/"))
