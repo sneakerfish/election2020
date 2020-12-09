@@ -115,7 +115,7 @@ def house_one_state(state_name, csvwriter):
 
 
 if __name__ == "__main__":
-    fname = "2020-house.csv"
+    fname = "data/2020-house.csv"
     with open(fname, 'w') as csvfile:
         csvwriter = csv.writer(csvfile)
         csvwriter.writerow(["district-name", "district", "dem-candidate", "gop-candidate",
