@@ -13,6 +13,7 @@ import json
 import os.path
 import re
 import requests
+import time
 
 # if should re-download everything, else skips existing files
 force_redownload = False
@@ -84,7 +85,18 @@ exitpolls_fileB = ".json"
 
 # 2020 results, p+h
 # https://www.politico.com/2020-election/results/massachusetts/
+results_2020hr_url = "https://www.politico.com/2020-national-results/house-overall.json"
+results_2020hm_url = "https://www.politico.com/2020-national-metadata/house.meta.json"
+results_2020hr_file = "2020_house-overall.json"
+results_2020hm_file = "2020_house.meta.json"
 
+# presidential results by fips state
+results_2020pr_urlA = "https://www.politico.com/2020-statewide-results/"
+results_2020pr_urlB = "/potus.json"
+results_2020pm_urlA = "https://www.politico.com/2020-statewide-metadata/"
+results_2020pm_urlB = "/potus.meta.json"
+results_2020pr_file = "2020_potus.json"
+results_2020pm_file = "2020_potus.meta.json"
 
 
 # 2020 pre-election polls presidential
@@ -101,12 +113,74 @@ poll_2020_house_file = 'monmouthpoll_us_091020.csv'
 
 
 
-### Global vars for parsing
+### Global vars for parsing, aggregating, transforming
 parsed_fileprefix = "parsed_"
 exitpolls_parsed_fileB = ".csv"
+res2020_parsed_fileB = ".csv"
+
+interim_fileprefix = "interim_data_"
+interim_filesuffix = ".csv"
 
 final_fileprefix = "final_data_"
 final_filesuffix = ".csv"
+
+
+
+### FIPS data: (from wikipedia)
+fips_state_data = [
+      ["Alabama", "AL", "01"],
+      ["Alaska", "AK", "02"],
+      ["Arizona", "AZ", "04"],
+      ["Arkansas", "AR", "05"],
+      ["California", "CA", "06"],
+      ["Colorado", "CO", "08"],
+      ["Connecticut", "CT", "09"],
+      ["Delaware", "DE", "10"],
+      ["District of Columbia", "DC", "11"],
+      ["Florida", "FL", "12"],
+      ["Georgia", "GA", "13"],
+      ["Hawaii", "HI", "15"],
+      ["Idaho", "ID", "16"],
+      ["Illinois", "IL", "17"],
+      ["Indiana", "IN", "18"],
+      ["Iowa", "IA", "19"],
+      ["Kansas", "KS", "20"],
+      ["Kentucky", "KY", "21"],
+      ["Louisiana", "LA", "22"],
+      ["Maine", "ME", "23"],
+      ["Maryland", "MD", "24"],
+      ["Massachusetts", "MA", "25"],
+      ["Michigan", "MI", "26"],
+      ["Minnesota", "MN", "27"],
+      ["Mississippi", "MS", "28"],
+      ["Missouri", "MO", "29"],
+      ["Montana", "MT", "30"],
+      ["Nebraska", "NE", "31"],
+      ["Nevada", "NV", "32"],
+      ["New Hampshire", "NH", "33"],
+      ["New Jersey", "NJ", "34"],
+      ["New Mexico", "NM", "35"],
+      ["New York", "NY", "36"],
+      ["North Carolina", "NC", "37"],
+      ["North Dakota", "ND", "38"],
+      ["Ohio", "OH", "39"],
+      ["Oklahoma", "OK", "40"],
+      ["Oregon", "OR", "41"],
+      ["Pennsylvania", "PA", "42"],
+      ["Rhode Island", "RI", "44"],
+      ["South Carolina", "SC", "45"],
+      ["South Dakota", "SD", "46"],
+      ["Tennessee", "TN", "47"],
+      ["Texas", "TX", "48"],
+      ["Utah", "UT", "49"],
+      ["Vermont", "VT", "50"],
+      ["Virginia", "VA", "51"],
+      ["Washington", "WA", "53"],
+      ["West Virginia", "WV", "54"],
+      ["Wisconsin", "WI", "55"],
+      ["Wyoming", "WY", "56"],
+    ]
+fips_to_state = {x[2]: x[1] for x in fips_state_data}
 
 
 
@@ -155,7 +229,7 @@ def download_pres_results():
     # Not doing some downloads automatically
     fname = f"{data_dir}{presidential_2012_file}"
     if not os.path.exists(fname):
-        print(f"ERROR: don't know how to download {fname}")
+        print(f"ERROR: don't know how to download 2012 pres result {fname}")
         print(f"  please use R go get this")
     elif force_redownload:
         print(f"WARNING: skipping re-download of {fname}")
@@ -188,7 +262,7 @@ def download_2020_pres_polls():
     # Not doing some downloads automatically
     fname = f"{data_dir}{poll_2020_pres_file}"
     if not os.path.exists(fname):
-        print(f"ERROR: don't know how to download {fname}")
+        print(f"ERROR: don't know how to download 2020 pres poll {fname}")
         print(f"  please download {poll_2020_pres_link}")
         print(f"  and save tab National Presidential as csv")
     elif force_redownload:
@@ -199,7 +273,7 @@ def download_2020_house_polls():
     # Not doing some downloads automatically
     fname = f"{data_dir}{poll_2020_house_file}"
     if not os.path.exists(fname):
-        print(f"ERROR: don't know how to download {fname}")
+        print(f"ERROR: don't know how to download 2020 house poll {fname}")
         print(f"  please download {poll_2020_house_link}")
         print(f"  and run through \"pdftotext -layout -f 15 -l 16 monmouthpoll_us_091020.pdf - | tr -d ',' | sed -e s'/   */,/g' > {fname}\"")
     elif force_redownload:
@@ -208,16 +282,51 @@ def download_2020_house_polls():
 
 # 2020 results
 def download_2020_house_results():
-    print("@@@TODO - 2020 house results")
-    #https://www.politico.com/2020-national-results/house-overall.json
-    #https://www.politico.com/2020-national-metadata/house.meta.json
-
+    fname = f"{data_dir}{results_2020hr_file}"
+    url = f"{results_2020hr_url}"
+    fnameB = f"{data_dir}{results_2020hm_file}"
+    urlB = f"{results_2020hm_url}"
+    if force_redownload or not os.path.exists(fname) or \
+       not os.path.exists(fnameB):
+        response = requests.get(url)
+        with open(fname, 'w') as outfile:
+            outfile.write(response.text)
+        response = requests.get(urlB)
+        with open(fnameB, 'w') as outfile:
+            outfile.write(response.text)
 
 def download_2020_pres_results():
-    print("@@@TODO - 2020 pres results")
-    #https://www.politico.com/2020-statewide-results/25/potus.json
-    #https://www.politico.com/2020-statewide-metadata/25/potus.meta.json
-    #https://www.politico.com/2020-statewide-results/25/potus-counties.json
+    fname = f"{data_dir}{results_2020pr_file}"
+    fnameB = f"{data_dir}{results_2020pm_file}"
+    if force_redownload or not os.path.exists(fname) or \
+       not os.path.exists(fnameB):
+        # loop across all states, put into single file wrapped json
+        stateres = []
+        statemeta = []
+        for s in fips_state_data:
+            fips = s[2]
+            abrv = s[1]
+            url = f"{results_2020pr_urlA}{fips}{results_2020pr_urlB}"
+            urlB = f"{results_2020pm_urlA}{fips}{results_2020pm_urlB}"
+            response = requests.get(url)
+            stateres.append(f'"{abrv}":' + response.text)
+            response = requests.get(urlB)
+            statemeta.append(f'"{abrv}":' + response.text)
+            time.sleep(1)
+        with open(fname, 'w') as outfile:
+            outfile.write("{")
+            for i,s in enumerate(stateres):
+                if i > 0:
+                    outfile.write(",")
+                outfile.write(s)
+            outfile.write("}")
+        with open(fnameB, 'w') as outfile:
+            outfile.write("{")
+            for i,s in enumerate(statemeta):
+                if i > 0:
+                    outfile.write(",")
+                outfile.write(s)
+            outfile.write("}")
 
 
 
@@ -615,8 +724,221 @@ def parse_census_districts():
 
 
 
-def parse_2020_files():
-    print("@@@TODO - parse 2020 files")
+def parse_2020_house_polls():
+    fname = f"{data_dir}{poll_2020_house_file}"
+    fout = f"{data_dir}{parsed_fileprefix}{poll_2020_house_file}"
+    result = {}
+    # really not a traditional csv (converted pdf page with multiple tables)
+    with open(fname, 'r') as csvfile:
+        csvreader = csv.reader(csvfile)
+        # multiple sub-headers, find the appropriate one
+        next_gender = False
+        next_race = False
+        next_educ = False
+        for row in csvreader:
+            if len(row) < 4: continue
+            if row[-1] == "Female":
+                next_gender = True
+                continue
+            if row[-1] == "Asn-Oth":
+                next_race = True
+                continue
+            if row[-2] == "Swing" and row[-1] == "Clinton":
+                next_educ = True
+                continue
+
+            # strip trailing %
+            for i in range(len(row)):
+                if row[i].endswith("%"):
+                    row[i] = row[i][:-1]
+
+            if next_gender:
+                fld = 0
+                if row[1] == "Democrat":
+                    fld = 0
+                elif row[1] == "Republican":
+                    fld = 1
+                else:
+                    next_gender = False
+                    continue
+                for a in ['Gender,Male', 'Gender,Female']:
+                    if a not in result:
+                        result[a] = [0, 0, 0]
+                result['Gender,Male'][fld] = row[-2]
+                result['Gender,Female'][fld] = row[-1]
+
+            if next_race:
+                fld = 0
+                if row[1] == "Democrat":
+                    fld = 0
+                elif row[1] == "Republican":
+                    fld = 1
+                else:
+                    next_race = False
+                    continue
+                demflds = ['Age,18-34', 'Age,35-49', 'Age,50-64',
+                           'Age,65 and Older',
+                           'Income,Less Than $50K', 'Income,$50-100K',
+                           'Income,$100K or More',
+                           'Race,White', 'Race,Non-White']
+                for i, a in enumerate(demflds):
+                    if a not in result:
+                        result[a] = [0, 0, 0]
+                    result[a][fld] = row[2 + i]
+
+            if next_educ:
+                if row[1] == 'degree' and row[2] == 'degree': continue
+                fld = 0
+                if row[1] == "Democrat":
+                    fld = 0
+                elif row[1] == "Republican":
+                    fld = 1
+                else:
+                    next_educ = False
+                    continue
+                for a in ['Education,HS or less', 'Education,College Graduate']:
+                    if a not in result:
+                        result[a] = [0, 0, 0]
+                result['Education,HS or less'][fld] = row[2]
+                result['Education,College Graduate'][fld] = row[3]
+
+    # save results
+    with open(fout, 'w') as csvfile:
+        csvwriter = csv.writer(csvfile)
+        for k,v in result.items():
+            newarr = k.split(",")
+            newarr.extend(v)
+            csvwriter.writerow(newarr)
+
+
+
+def parse_2020_house_results():
+    fname = f"{data_dir}{results_2020hr_file}"
+    fnameB = f"{data_dir}{results_2020hm_file}"
+    fout = f"{data_dir}{parsed_fileprefix}{results_2020hr_file}{res2020_parsed_fileB}"
+
+    result = []
+    (data, dataB) = ([],[])
+    with open(fname, "r") as infile:
+        data = json.load(infile)
+    with open(fnameB, "r") as infile:
+        dataB = json.load(infile)
+    # create lookup of metadata
+    mlookup = {}
+    clookup = {}
+    for r in dataB:
+        mlookup[r['raceid']] = r
+        for c in r['candidates']:
+            clookup[c['candidateID']] = c
+    for r in data['races']:
+        #WANT: year,state,district,dem,rep,tot,incumbent,prevparty
+        rid = r['raceid']
+        s = r['stateFips']
+        sname = fips_to_state[s]
+        d = r['district']
+        dn = int(d) if d != "00" else 1
+        tmparr = [2020, sname, dn, 0, 0, 0, 0, ""]
+        if mlookup[rid]['holdingParty'] == "gop":
+            tmparr[7] = 'r'
+        elif mlookup[rid]['holdingParty'] == "dem":
+            tmparr[7] = 'd'
+        else:
+            #print("UNKNOWN PARTY: ", mlookup[rid]['holdingParty'])
+            pass
+        for c in mlookup[rid]['candidates']:
+            if c['incumbent']:
+                tmparr[6] = 1
+        for c in r['candidates']:
+            v = c['vote']
+            party = clookup[c['candidateID']]['party']
+            if party == "dem":
+                tmparr[3] += v
+            if party == "gop":
+                tmparr[4] += v
+            tmparr[5] += v
+        result.append(tmparr)
+
+    with open(fout, 'w') as csvfile:
+        csvwriter = csv.writer(csvfile)
+        for r in result:
+            csvwriter.writerow(r)
+
+
+
+def parse_2020_pres_files():
+    print("@@@TODO - parse 2020 pres files")
+
+
+
+# read and convert parsed demographic file
+def read_parsed_demo_file(fname, use_alt_cols = False):
+        demod = {}
+        # Have the following limited demographic data for predictions
+        #  Gender: Male, Female
+        #  Age: 18-34,35-49,50-64,65+
+        #  Income: <$50K,$50-100K,$100K+
+        #  Race: Whte non-Hisp,Hsp-Blk-Asn-Oth
+        #  Education: No degree,4 yr degree
+        # These exit poll columns are selected to be close to those
+        democols = ['Gender,Male','Gender,Female',
+                    'Age,18-29',
+                    'Age,30-39',
+                    'Age,40-49',
+                    'Age,50-64',
+                    'Age,65 and Older',
+                    'Income,Less Than $50K',
+                    'Income,$50-100K',
+                    'Income,$100K or More',
+                    'Race,White','Race,Black','Race,Latino',
+                    'Race,Asian','Race,Other',
+                    'Education,HS or less',
+                    "Education,College Graduate",
+                    'Education,Postgraduate',
+        ]
+        if use_alt_cols:
+            democols = ['Gender,Male', 'Gender,Female',
+                        'Age,18-34', 'Age,35-49', 'Age,50-64',
+                        'Age,65 and Older',
+                        'Income,Less Than $50K', 'Income,$50-100K',
+                        'Income,$100K or More',
+                        'Race,White', 'Race,Non-White',
+                        'Education,HS or less',
+                        'Education,College Graduate']
+
+        democolsrepl = {
+            "Men" : "Male",
+            "Women" : "Female",
+            "African-American" : "Black",
+            "Other race" : "Other",
+            "Bachelor's degree" : "College Graduate",
+            "College graduate" : "College Graduate",
+            "Advanced degree" : "Postgraduate",
+            "65 and older" : "65 and Older",
+            "Under $50K" : "Less Than $50K",
+            "$50K-$100K" : "$50-100K",
+            "$100K or more" : "$100K or More",
+        }
+        demofcolrepl = {
+            "Are you a college graduate?,No" : "Education,HS or less",
+            "Are You a College Graduate?,No" : "Education,HS or less",
+        }
+        with open(fname) as csvfile:
+            csvreader = csv.reader(csvfile)
+            for row in csvreader:
+                # data cleanup
+                row[0] = row[0].replace('Vote by ', '')
+                if row[1] in democolsrepl: row[1] = democolsrepl[row[1]]
+                k = f"{row[0]},{row[1]}"
+                if k in demofcolrepl:
+                    (row[0], row[1]) = demofcolrepl[k].split(",")
+                    k = f"{row[0]},{row[1]}"
+                #print("KEY is =%s=" % k)
+                if k in democols:
+                    demrepdiff = int(row[2]) - int(row[3])
+                    demod[k.replace(",", "_")] = demrepdiff
+                    #print("FOUND DEM %s = %s" % (k, demrepdiff) )
+
+        return (demod, democols)
 
 
 
@@ -682,65 +1004,10 @@ def join_house_data():
                     continue
                 censusd[f"{row[1]}-{row[2]}"] = row
 
-        demoh = []
-        demod = {}
-        # Have the following limited demographic data for predictions
-        #  Gender: Male, Female
-        #  Age: 18-34,35-49,50-64,65+
-        #  Income: <$50K,$50-100K,$100K+
-        #  Race: Whte non-Hisp,Hsp-Blk-Asn-Oth
-        #  Education: No degree,4 yr degree
-        # These exit poll columns are selected to be close to those
-        democols = ['Gender,Male','Gender,Female',
-                    'Age,18-29',
-                    'Age,30-39',
-                    'Age,40-49',
-                    'Age,50-64',
-                    'Age,65 and Older',
-                    'Income,Less Than $50K',
-                    'Income,$50-100K',
-                    'Income,$100K or More',
-                    'Race,White','Race,Black','Race,Latino',
-                    'Race,Asian','Race,Other',
-                    'Education,HS or less',
-                    "Education,College Graduate",
-                    'Education,Postgraduate',
-        ]
-        democolsrepl = {
-            "Men" : "Male",
-            "Women" : "Female",
-            "African-American" : "Black",
-            "Other race" : "Other",
-            "Bachelor's degree" : "College Graduate",
-            "College graduate" : "College Graduate",
-            "Advanced degree" : "Postgraduate",
-            "65 and older" : "65 and Older",
-            "Under $50K" : "Less Than $50K",
-            "$50K-$100K" : "$50-100K",
-            "$100K or more" : "$100K or More",
-        }
-        demofcolrepl = {
-            "Are you a college graduate?,No" : "Education,HS or less",
-            "Are You a College Graduate?,No" : "Education,HS or less",
-        }
-        with open(f"{data_dir}{parsed_fileprefix}{exitpolls_fileA}{year}h{exitpolls_parsed_fileB}", 'r') as csvfile:
-            csvreader = csv.reader(csvfile)
-            for row in csvreader:
-                # data cleanup
-                row[0] = row[0].replace('Vote by ', '')
-                if row[1] in democolsrepl: row[1] = democolsrepl[row[1]]
-                k = f"{row[0]},{row[1]}"
-                if k in demofcolrepl:
-                    (row[0], row[1]) = demofcolrepl[k].split(",")
-                    k = f"{row[0]},{row[1]}"
-                #print("KEY is =%s=" % k)
-                if k in democols:
-                    demrepdiff = int(row[2]) - int(row[3])
-                    demod[k.replace(",", "_")] = demrepdiff
-                    #print("FOUND DEM %s = %s" % (k, demrepdiff) )
+        (demod, democols) = read_parsed_demo_file(f"{data_dir}{parsed_fileprefix}{exitpolls_fileA}{year}h{exitpolls_parsed_fileB}")
 
         # write final data
-        fout = f"{data_dir}{final_fileprefix}{year}h{final_filesuffix}"
+        fout = f"{data_dir}{interim_fileprefix}{year}h{interim_filesuffix}"
         with open(fout, 'w') as csvfile:
             csvwriter = csv.writer(csvfile)
             censush = censush[0:3] +['dem', 'rep', 'tot', 'incumbent', 'prevparty'] + censush[3:]
@@ -769,6 +1036,64 @@ def join_house_data():
                 csvwriter.writerow(row)
 
 
+    # and now do 2020
+    # use census data, but add custom pre-election polling and results
+    for year in [2020]:
+
+        # have to use 2019 census data since 2020 is not ready yet
+        censush = []
+        censusd = {}
+        fname = f"{data_dir}{parsed_fileprefix}{census_fileA}{year-1}{census_fileB}"
+        with open(fname, 'r') as csvfile:
+            csvreader = csv.reader(csvfile)
+            for row in csvreader:
+                if row[0] == "year":
+                    censush = row
+                    continue
+                censusd[f"{row[1]}-{row[2]}"] = row
+
+        # read the pre-election polls
+        (demod, democols) = read_parsed_demo_file(f"{data_dir}{parsed_fileprefix}{poll_2020_house_file}", True)
+
+        # read in actual results (for test accuracy only)
+        votingh = []
+        votingd = {}
+        fname = f"{data_dir}{parsed_fileprefix}{results_2020hr_file}{res2020_parsed_fileB}"
+        with open(fname, 'r') as csvfile:
+            csvreader = csv.reader(csvfile)
+            for row in csvreader:
+                if row[0] == "year":
+                    censush = row
+                    continue
+                votingd[f"{row[1]}-{row[2]}"] = row
+            votingh.append(row)
+
+        # write final data
+        fout = f"{data_dir}{interim_fileprefix}{year}h{interim_filesuffix}"
+        with open(fout, 'w') as csvfile:
+            csvwriter = csv.writer(csvfile)
+            censush = censush[0:3] +['dem', 'rep', 'tot', 'incumbent', 'prevparty'] + censush[3:]
+            censush.extend(democols)
+            csvwriter.writerow(censush)
+            for d in sorted(censusd.keys()):
+                row = censusd[d][0:3]
+                row[0] = year
+                if d in votingd:
+                    row.extend(votingd[d][3:8])
+                else:
+                    row.extend([0,0,0,0,""])
+                    if d != "DC-1" and d != "PR-1":
+                        print("NO voting results for %s %s" % (year,d))
+                row.extend(censusd[d][3:])
+                for c in democols:
+                    k = c.replace(",", "_")
+                    if k in demod:
+                        row.append(demod[k])
+                    else:
+                        row.append("")
+                csvwriter.writerow(row)
+
+
 
 # now for a single record with everything for pres elections
 def join_pres_data():
@@ -782,6 +1107,142 @@ for year in pres_years:
 """
 
 
+
+# calculate the percentages from other fields
+# header, row, field with totals,
+# fields with nums of groups, fields with corresponding pcts
+def create_aggr_pct(h, r, ftot, fnums, fpcts):
+    # create weighted result
+    res = 0
+    for i in range(len(fnums)):
+        res += r[h.index(fnums[i])] / r[h.index(ftot)] * r[h.index(fpcts[i])]
+    return res
+
+
+
+# Make the old data files match the 2020 one.
+# Take the raw data and normalize the columns so can model it
+# eg exit polls have diff ranges than census for age/education/race/...
+def normalize_house_data():
+    ## have the following limited demographic data for 2020 predictions
+    # Gender: Male, Female
+    # Age: 18-34,35-49,50-64,65+
+    # Income: <$50K,$50-100K,$100K+
+    # Race: Whte non-Hisp,Hsp-Blk-Asn-Oth
+    # Education: No degree,4 yr degree
+
+    ## need to make the census and historical demographics match that
+    #year,state,district,dem,rep,tot,incumbent,prevparty,voteage_pop,voteage_m,voteage_f,race_pop,race_white,race_black,race_asian,race_hisp,ed_pop,ed_ba,ed_grdeg,age_pop,age_20_24,age_25_34,age_35_44,age_45_54,age_55_59,age_60_64,age_18_plus,age_21_plus,age_65_plus,inc_pop,inc_less_10,inc_10_14,inc_15_24,inc_25_34,inc_35_49,inc_50_74,inc_75_99,inc_100_149,inc_150_199,inc_200_plus,"Gender,Male","Gender,Female","Age,18-29","Age,30-39","Age,40-49","Age,50-64","Age,65 and Older","Income,Less Than $50K","Income,$50-100K","Income,$100K or More","Race,White","Race,Black","Race,Latino","Race,Asian","Race,Other","Education,HS or less","Education,College Graduate","Education,Postgraduate"
+
+    #OR older census
+    #year,state,district,dem,rep,tot,incumbent,prevparty,age_pop,allage_m,allage_f,age_18_plus,allage_citzenpct,race_pop,race_white,race_black,race_asian,race_hisp,ed_pop,ed_ba,ed_grdeg,age_20_24,age_25_34,age_35_44,age_45_54,age_55_59,age_60_64,age_21_plus,age_65_plus,inc_pop,inc_less_10,inc_10_14,inc_15_24,inc_25_34,inc_35_49,inc_50_74,inc_75_99,inc_100_149,inc_150_199,inc_200_plus,
+
+    # this is 2020
+    #year,state,district,dem,rep,tot,incumbent,prevparty,voteage_pop,voteage_m,voteage_f,race_pop,race_white,race_black,race_asian,race_hisp,ed_pop,ed_ba,ed_grdeg,age_pop,age_20_24,age_25_34,age_35_44,age_45_54,age_55_59,age_60_64,age_18_plus,age_21_plus,age_65_plus,inc_pop,inc_less_10,inc_10_14,inc_15_24,inc_25_34,inc_35_49,inc_50_74,inc_75_99,inc_100_149,inc_150_199,inc_200_plus,"Gender,Male","Gender,Female","Age,18-34","Age,35-49","Age,50-64","Age,65 and Older","Income,Less Than $50K","Income,$50-100K","Income,$100K or More","Race,White","Race,Non-White","Education,HS or less","Education,College Graduate"
+
+    copy_fields = ['year', 'state', 'district', 'dem', 'rep', 'tot', 'incumbent', 'prevparty', 'voteage_pop', 'voteage_m', 'voteage_f', 'race_pop', 'race_white', 'race_nonwhite', 'ed_pop', 'ed_4y', 'ed_no4y', 'age_pop', 'age_18_34', 'age_35_49', 'age_50_64', 'age_65_plus', 'inc_pop', 'inc_lt_50', 'inc_50_100', 'inc_100_plus', "Gender,Male","Gender,Female","Age,18-34","Age,35-49","Age,50-64","Age,65 and Older","Income,Less Than $50K","Income,$50-100K","Income,$100K or More","Race,White","Race,Non-White","Education,HS or less","Education,4yrDegree",
+]
+
+    cong_years = [2012, 2014, 2016, 2018, 2020]
+    voting_all = []
+    for year in cong_years:
+        votingh = []
+        votingd = []
+        fname = f"{data_dir}{interim_fileprefix}{year}h{interim_filesuffix}"
+        fout = f"{data_dir}{final_fileprefix}{year}h{final_filesuffix}"
+        with open(fname, 'r') as csvfile:
+            csvreader = csv.reader(csvfile)
+            calc_vote_age = False
+            for row in csvreader:
+                if row[0] == "year":
+                    votingh = row
+                    if 'voteage_pop' not in votingh:
+                        votingh.extend(['voteage_pop', 'voteage_m',
+                                        'voteage_f'])
+                        calc_vote_age = True
+                    votingh.append('race_nonwhite')
+                    votingh.append('Race,Non-White')
+                    votingh.append('ed_no4y')
+                    votingh.append('ed_4y')
+                    votingh.append('Education,4yrDegree')
+                    votingh.append('inc_lt_50')
+                    votingh.append('inc_50_100')
+                    votingh.append('inc_100_plus')
+                    votingh.append('age_18_34')
+                    votingh.append('age_35_49')
+                    votingh.append('age_50_64')
+                    votingh.append('Age,18-34')
+                    votingh.append('Age,35-49')
+                    continue
+
+                if row[1] == "PR": continue
+
+                # create new fields with desired info
+                h = votingh
+                for i in range(8,len(row)):
+                    if row[i] != "":
+                        row[i] = float(row[i])
+                    else:
+                        row[i] = 0
+                while len(row) < len(h):
+                    row.append(0)
+
+                # older census does not have some fields
+                if (calc_vote_age):
+                    #print(row)
+                    row[h.index('voteage_pop')] = round(row[h.index('age_18_plus')] * (row[h.index('allage_citzenpct')] / 100))
+                    row[h.index('voteage_m')] = round(row[h.index('voteage_pop')] * (row[h.index('allage_m')] / row[h.index('age_pop')]))
+                    row[h.index('voteage_f')] = round(row[h.index('voteage_pop')] * (row[h.index('allage_f')] / row[h.index('age_pop')]))
+
+                row[h.index('race_nonwhite')] = row[h.index('race_pop')] - row[h.index('race_white')]
+                row[h.index('ed_4y')] = row[h.index('ed_ba')] + row[h.index('ed_grdeg')]
+                row[h.index('ed_no4y')] = row[h.index('ed_pop')] - row[h.index('ed_4y')]
+                row[h.index('inc_50_100')] = row[h.index('inc_50_74')] + row[h.index('inc_75_99')]
+                row[h.index('inc_100_plus')] = row[h.index('inc_100_149')] + row[h.index('inc_150_199')] + row[h.index('inc_200_plus')]
+                row[h.index('inc_lt_50')] = row[h.index('inc_pop')] - row[h.index('inc_50_100')] - row[h.index('inc_100_plus')]
+                row[h.index('age_18_34')] = round(row[h.index('age_20_24')] + row[h.index('age_25_34')] + 2/3 * (row[h.index('age_21_plus')] - row[h.index('age_18_plus')]))
+                row[h.index('age_35_49')] = row[h.index('age_35_44')] + 0.5 *  row[h.index('age_45_54')]
+                row[h.index('age_50_64')] = 0.5 *  row[h.index('age_45_54')] + row[h.index('age_55_59')] + row[h.index('age_60_64')]
+
+                # and aggregate the polls for past years
+                if year != 2020:
+                    row[h.index('Race,Non-White')] = round(create_aggr_pct(h, row, 'race_nonwhite', ['race_black','race_asian','race_hisp'], ["Race,Black","Race,Asian","Race,Latino"]))
+                    z = row[h.index('race_nonwhite')] / (row[h.index('race_black')] + row[h.index('race_asian')] + row[h.index('race_hisp')])
+                    row[h.index('Race,Non-White')] *= z
+
+                    row[h.index('Education,4yrDegree')] = round(create_aggr_pct(h, row, 'ed_4y', ['ed_ba', 'ed_grdeg'], ["Education,College Graduate","Education,Postgraduate"]))
+                    row[h.index('Age,18-34')] = round((2 * row[h.index('Age,18-29')] + row[h.index('Age,30-39')]) / 3)
+                    row[h.index('Age,35-49')] = round((row[h.index('Age,30-39')] + 2 * row[h.index('Age,40-49')]) / 3)
+
+                tmparr = []
+                for i, c in enumerate(copy_fields):
+                    if i > 7:
+                        tmparr.append(int(row[h.index(c)]))
+                    else:
+                        tmparr.append(row[h.index(c)])
+                votingd.append(tmparr)
+
+        voting_all.extend(votingd)
+
+    fout = f"{data_dir}{final_fileprefix}h{final_filesuffix}"
+    with open(fout, 'w') as csvfile:
+        csvwriter = csv.writer(csvfile)
+        csvwriter.writerow(copy_fields)
+        for row in voting_all:
+            csvwriter.writerow(row)
+
+    return
+
+
+
+# take the raw data and normalize the columns so can model it
+# eg exit polls have diff ranges than census for age/education/race/...
+def normalize_pres_data():
+    print("@@@TODO - normalize pres data")
+    return
+
+
+
 if __name__ == '__main__':
     download_census_district()
     download_house_results()
@@ -791,24 +1252,27 @@ if __name__ == '__main__':
     download_exit_polls()
     download_2020_pres_polls()
     download_2020_house_polls()
-    #@@@TODO
     download_2020_house_results()
-    #@@@TODO
     download_2020_pres_results()
 
+    ## parse the above files to pull out relevant fields
     parse_exit_polls()
     parse_census_districts()
-    parse_2020_files()
+    parse_2020_house_polls()
+    parse_2020_house_results()
+    parse_2020_pres_files()
+
+    ## aggregate the parsed files into files with a single record
     join_house_data()
     join_pres_data()
 
+    ## transform some columns to ensure consistency
+    normalize_house_data()
+    normalize_pres_data()
+
 
 #add per-district presidential data (join_pres_data)
-#add unopposed/incumbent/party fields
-#add more demographics
 
-#parse 2020 polls  - for Tues
-#above todos for 2020 results
 
 # add presidential results (for %4 years) - raw num, and diff
 # add voter demographics number raw num and diff (D%-R%)
@@ -816,9 +1280,12 @@ if __name__ == '__main__':
 #(what about indeps?? ignore??)
 
 
-        ## have the following limited demographic data for predictions
-        # Gender: Male, Female
-        # Age: 18-34,35-49,50-64,65+
-        # Income: <$50K,$50-100K,$100K+
-        # Race: Whte non-Hisp,Hsp-Blk-Asn-Oth
-        # Education: No degree,4 yr degree
+# test data is 2020,
+# preds are dem,rep,tot
+# could convert pcts into raw numbers by multiplying pop
+
+# would want to predict the party that won (ie is dem > rep)
+
+# presidential could be vote diff per ... district
+#  - then sum across state to get electors and winner,
+#  can't validate 2020 districts
