@@ -273,9 +273,18 @@ def download_2020_house_polls():
     # Not doing some downloads automatically
     fname = f"{data_dir}{poll_2020_house_file}"
     if not os.path.exists(fname):
-        print(f"ERROR: don't know how to download 2020 house poll {fname}")
+        print(f"WARNING[ERROR]: don't know how to download 2020 house poll {fname}")
         print(f"  please download {poll_2020_house_link}")
         print(f"  and run through \"pdftotext -layout -f 15 -l 16 monmouthpoll_us_091020.pdf - | tr -d ',' | sed -e s'/   */,/g' > {fname}\"")
+
+        url = "https://raw.githubusercontent.com/jfisherfas/election2020/main/data/monmouthpoll_us_091020.csv"
+        print(f"  Above csv is now available at {url}")
+        print(f"  so downloading from there")
+
+        response = requests.get(url)
+        with open(fname, 'w') as outfile:
+            outfile.write(response.text)
+
     elif force_redownload:
         print(f"WARNING: skipping re-download of {fname}")
 
@@ -1246,39 +1255,37 @@ def normalize_pres_data():
 if __name__ == '__main__':
     download_census_district()
     download_house_results()
-    download_pres_results()
-    #### Not using this anymore, using per-district instead of per-county
-    ##download_pres_county_results()
+    #download_pres_results()
+    # #### Not using this anymore, using per-district instead of per-county
+    # ##download_pres_county_results()
     download_exit_polls()
-    download_2020_pres_polls()
+    #download_2020_pres_polls()
     download_2020_house_polls()
     download_2020_house_results()
-    download_2020_pres_results()
+    #download_2020_pres_results()
 
     ## parse the above files to pull out relevant fields
     parse_exit_polls()
     parse_census_districts()
     parse_2020_house_polls()
     parse_2020_house_results()
-    parse_2020_pres_files()
+    #parse_2020_pres_files()
 
     ## aggregate the parsed files into files with a single record
     join_house_data()
-    join_pres_data()
+    #join_pres_data()
 
     ## transform some columns to ensure consistency
     normalize_house_data()
-    normalize_pres_data()
+    #normalize_pres_data()
 
 
 #add per-district presidential data (join_pres_data)
-
 
 # add presidential results (for %4 years) - raw num, and diff
 # add voter demographics number raw num and diff (D%-R%)
 #result (to train and to test on ) is pct diff from D to R
 #(what about indeps?? ignore??)
-
 
 # test data is 2020,
 # preds are dem,rep,tot
