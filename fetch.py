@@ -14,6 +14,7 @@ import os.path
 import re
 import requests
 import time
+import pandas as pd
 
 # if should re-download everything, else skips existing files
 force_redownload = False
@@ -101,7 +102,8 @@ results_2020pm_file = "2020_potus.meta.json"
 
 # 2020 pre-election polls presidential
 # https://morningconsult.com/form/2020-u-s-election-tracker/#section-9
-poll_2020_pres_link = 'https://assets.morningconsult.com/wp-uploads/2020/11/02093508/11.02-MCPI-National-and-Senate-Data.xlsx from https://morningconsult.com/form/2020-u-s-election-tracker/#section-9'
+poll_2020_pres_url = 'https://assets.morningconsult.com/wp-uploads/2020/11/02093508/'
+poll_2020_pres_xls = '11.02-MCPI-National-and-Senate-Data.xlsx'
 poll_2020_pres_file = '11.02-MCPI-National-and-Senate-Data.csv'
 # ignoring  https://docs.google.com/spreadsheets/d/1cZURJuAP8P5rwmIRqX1Qk2QjXRHN4SeRbd-s51LbxH4/edit#gid=0
 
@@ -261,13 +263,15 @@ def download_exit_polls():
 def download_2020_pres_polls():
     # Not doing some downloads automatically
     fname = f"{data_dir}{poll_2020_pres_file}"
-    if not os.path.exists(fname):
-        print(f"ERROR: don't know how to download 2020 pres poll {fname}")
-        print(f"  please download {poll_2020_pres_link}")
-        print(f"  and save tab National Presidential as csv")
-    elif force_redownload:
-        print(f"WARNING: skipping re-download of {fname}")
-
+    if force_redownload or not os.path.exists(fname):
+        response = requests.get(f"{poll_2020_pres_url}{poll_2020_pres_xls}")
+        # Write the XLSX file to the data directory
+        newFile = open(f"{data_dir}{poll_2020_pres_file}", "wb")
+        newFile.write(response.content)
+        # Read it with Pandas and then write the CSV file.
+        xls = pd.ExcelFile(f"{data_dir}{poll_2020_pres_file}")
+        df = pd.read_excel(xls, "National Presidential")
+        df.to_csv(fname, sep=",", encoding='utf-8', index=False)
 
 def download_2020_house_polls():
     # Not doing some downloads automatically
@@ -1259,7 +1263,7 @@ if __name__ == '__main__':
     # #### Not using this anymore, using per-district instead of per-county
     # ##download_pres_county_results()
     download_exit_polls()
-    #download_2020_pres_polls()
+    download_2020_pres_polls()
     download_2020_house_polls()
     download_2020_house_results()
     #download_2020_pres_results()
