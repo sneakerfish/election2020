@@ -28,10 +28,15 @@ example above.
 `congressionalmap.Rmd` R notebook to look at maps on the congressional
 district level.
 
-`get_house_results.py` The 2020 results were not available yet on the `politicaldata` 
+`get_house_results.py` The 2020 results were not available yet on the `politicaldata`
 library that we used for house and presidential races above.  This file gets those results
 from the Politico website, which had the most up-to-date results as of this writing.
- 
+
+`house_changes.py` Combine the district and determine a winner for the
+`house.R` files and the `get_house_results.py` tools above.  This is
+so that we can look at districts over the 8 years of 4 congressional
+cycles from 2012 to 2020.
+
 Maps are available by individual or groups of states
 
 ![2016 Presidential Race](https://github.com/sneakerfish/election2020/blob/main/images/2016.presidential.png)
